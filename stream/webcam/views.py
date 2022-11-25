@@ -1,25 +1,16 @@
-import cv2
-
-from django.http import HttpResponse, StreamingHttpResponse
-from django.template import loader
+from django.shortcuts import render
+from django.http import StreamingHttpResponse
+from .camera import VideoCamera
 
 def index(request):
-    template = loader.get_template('index.html')
-    return HttpResponse(template.render({}, request))
-
-def stream():
-    cap = cv2.VideoCapture(0) 
-
+    return render(request, 'index.html')
+    
+def gen(camera):
     while True:
-        ret, frame = cap.read()
-
-        if not ret:
-            print("Error: failed to capture image")
-            break
-
-        cv2.imwrite('demo.jpg', frame)
+        frame = camera.get_frame()
         yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + open('demo.jpg', 'rb').read() + b'\r\n')
+				b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
 
 def video_feed(request):
-    return StreamingHttpResponse(stream(), content_type='multipart/x-mixed-replace; boundary=frame')
+	return StreamingHttpResponse(gen(VideoCamera()),
+					content_type='multipart/x-mixed-replace; boundary=frame')
